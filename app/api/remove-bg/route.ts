@@ -4,7 +4,6 @@ import {
   getModelRuntimeInfo,
   removeBackground,
   type BackgroundOption,
-  type RmbgModelVersion,
 } from '@/lib/bg-removal'
 
 export const runtime = 'nodejs'
@@ -17,29 +16,11 @@ function normalizeBg(value: string | null | undefined): BackgroundOption {
   if (!value || value === 'transparent') return 'transparent'
   if (value === 'white') return '#ffffff'
   if (value === 'black') return '#000000'
-  return value // 透传 CSS 颜色 / #rrggbb
+  return value
 }
 
 function errorResponse(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status })
-}
-
-function parseBoolean(input: string | null | undefined, defaultValue: boolean): boolean {
-  if (input == null) return defaultValue
-  const v = input.toLowerCase()
-  if (['1', 'true', 'yes', 'on'].includes(v)) return true
-  if (['0', 'false', 'no', 'off'].includes(v)) return false
-  return defaultValue
-}
-
-function parseOptionalNumber(input: string | null | undefined): number | null {
-  if (input == null) return null
-  const n = Number(input)
-  return Number.isFinite(n) ? n : null
-}
-
-function parseModelVersion(input: string | null | undefined): RmbgModelVersion {
-  return input === '2.0' ? '2.0' : '1.4'
 }
 
 function formatServerError(err: unknown): string {
@@ -55,12 +36,10 @@ function formatServerError(err: unknown): string {
 }
 
 /** 健康检查 / 模型预热 */
-export async function GET(req: NextRequest) {
-  const url = new URL(req.url)
-  const modelVersion = parseModelVersion(url.searchParams.get('model_version'))
-  const runtime = getModelRuntimeInfo(modelVersion)
+export async function GET() {
+  const runtime = getModelRuntimeInfo()
   try {
-    await getModel(modelVersion)
+    await getModel()
     return NextResponse.json({
       status: 'ready',
       model: runtime.modelId,
@@ -84,17 +63,7 @@ export async function POST(req: NextRequest) {
 
   let bytes: Uint8Array
   let bg: BackgroundOption = 'transparent'
-  let modelVersion = parseModelVersion(url.searchParams.get('model_version'))
-  let format = url.searchParams.get('format') ?? 'png' // 'png' | 'json'
-  let mainObjectOnly = parseBoolean(url.searchParams.get('main_object_only'), true)
-  let focusBoxX = parseOptionalNumber(url.searchParams.get('focus_box_x'))
-  let focusBoxY = parseOptionalNumber(url.searchParams.get('focus_box_y'))
-  let focusBoxW = parseOptionalNumber(url.searchParams.get('focus_box_w'))
-  let focusBoxH = parseOptionalNumber(url.searchParams.get('focus_box_h'))
-  let excludeBoxX = parseOptionalNumber(url.searchParams.get('exclude_box_x'))
-  let excludeBoxY = parseOptionalNumber(url.searchParams.get('exclude_box_y'))
-  let excludeBoxW = parseOptionalNumber(url.searchParams.get('exclude_box_w'))
-  let excludeBoxH = parseOptionalNumber(url.searchParams.get('exclude_box_h'))
+  let format = url.searchParams.get('format') ?? 'png'
 
   try {
     if (contentType.includes('multipart/form-data')) {
@@ -111,53 +80,12 @@ export async function POST(req: NextRequest) {
       }
       bytes = new Uint8Array(await file.arrayBuffer())
       bg = normalizeBg((form.get('bg') as string) ?? url.searchParams.get('bg'))
-      modelVersion = parseModelVersion(
-        (form.get('model_version') as string) ?? url.searchParams.get('model_version')
-      )
       format = (form.get('format') as string) ?? format
-      mainObjectOnly = parseBoolean(
-        (form.get('main_object_only') as string) ?? url.searchParams.get('main_object_only'),
-        mainObjectOnly
-      )
-      focusBoxX = parseOptionalNumber(
-        (form.get('focus_box_x') as string) ?? url.searchParams.get('focus_box_x')
-      )
-      focusBoxY = parseOptionalNumber(
-        (form.get('focus_box_y') as string) ?? url.searchParams.get('focus_box_y')
-      )
-      focusBoxW = parseOptionalNumber(
-        (form.get('focus_box_w') as string) ?? url.searchParams.get('focus_box_w')
-      )
-      focusBoxH = parseOptionalNumber(
-        (form.get('focus_box_h') as string) ?? url.searchParams.get('focus_box_h')
-      )
-      excludeBoxX = parseOptionalNumber(
-        (form.get('exclude_box_x') as string) ?? url.searchParams.get('exclude_box_x')
-      )
-      excludeBoxY = parseOptionalNumber(
-        (form.get('exclude_box_y') as string) ?? url.searchParams.get('exclude_box_y')
-      )
-      excludeBoxW = parseOptionalNumber(
-        (form.get('exclude_box_w') as string) ?? url.searchParams.get('exclude_box_w')
-      )
-      excludeBoxH = parseOptionalNumber(
-        (form.get('exclude_box_h') as string) ?? url.searchParams.get('exclude_box_h')
-      )
     } else if (contentType.includes('application/json')) {
       const body = (await req.json()) as {
         image_url?: string
         bg?: string
-        model_version?: string
         format?: string
-        main_object_only?: boolean | string
-        focus_box_x?: number | string
-        focus_box_y?: number | string
-        focus_box_w?: number | string
-        focus_box_h?: number | string
-        exclude_box_x?: number | string
-        exclude_box_y?: number | string
-        exclude_box_w?: number | string
-        exclude_box_h?: number | string
       }
       if (!body.image_url) {
         return errorResponse('缺少 image_url 字段')
@@ -172,30 +100,8 @@ export async function POST(req: NextRequest) {
       }
       bytes = new Uint8Array(buf)
       bg = normalizeBg(body.bg ?? url.searchParams.get('bg'))
-      modelVersion = parseModelVersion(body.model_version ?? url.searchParams.get('model_version'))
       format = body.format ?? format
-      mainObjectOnly = parseBoolean(
-        body.main_object_only == null ? undefined : String(body.main_object_only),
-        mainObjectOnly
-      )
-      focusBoxX = parseOptionalNumber(body.focus_box_x == null ? undefined : String(body.focus_box_x))
-      focusBoxY = parseOptionalNumber(body.focus_box_y == null ? undefined : String(body.focus_box_y))
-      focusBoxW = parseOptionalNumber(body.focus_box_w == null ? undefined : String(body.focus_box_w))
-      focusBoxH = parseOptionalNumber(body.focus_box_h == null ? undefined : String(body.focus_box_h))
-      excludeBoxX = parseOptionalNumber(
-        body.exclude_box_x == null ? undefined : String(body.exclude_box_x)
-      )
-      excludeBoxY = parseOptionalNumber(
-        body.exclude_box_y == null ? undefined : String(body.exclude_box_y)
-      )
-      excludeBoxW = parseOptionalNumber(
-        body.exclude_box_w == null ? undefined : String(body.exclude_box_w)
-      )
-      excludeBoxH = parseOptionalNumber(
-        body.exclude_box_h == null ? undefined : String(body.exclude_box_h)
-      )
     } else {
-      // 原始二进制 body
       const buf = await req.arrayBuffer()
       if (buf.byteLength === 0) {
         return errorResponse('请求体为空，请上传图片')
@@ -205,44 +111,13 @@ export async function POST(req: NextRequest) {
       }
       bytes = new Uint8Array(buf)
       bg = normalizeBg(url.searchParams.get('bg'))
-      modelVersion = parseModelVersion(url.searchParams.get('model_version'))
     }
   } catch (err) {
     return errorResponse(`请求解析失败: ${err instanceof Error ? err.message : String(err)}`)
   }
 
   try {
-    const { png, width, height } = await removeBackground(bytes, {
-      bg,
-      modelVersion,
-      mainObjectOnly,
-      focusBox:
-        mainObjectOnly &&
-        focusBoxX != null &&
-        focusBoxY != null &&
-        focusBoxW != null &&
-        focusBoxH != null
-          ? {
-              x: Math.min(1, Math.max(0, focusBoxX)),
-              y: Math.min(1, Math.max(0, focusBoxY)),
-              width: Math.min(1, Math.max(0, focusBoxW)),
-              height: Math.min(1, Math.max(0, focusBoxH)),
-            }
-          : undefined,
-      excludeBox:
-        mainObjectOnly &&
-        excludeBoxX != null &&
-        excludeBoxY != null &&
-        excludeBoxW != null &&
-        excludeBoxH != null
-          ? {
-              x: Math.min(1, Math.max(0, excludeBoxX)),
-              y: Math.min(1, Math.max(0, excludeBoxY)),
-              width: Math.min(1, Math.max(0, excludeBoxW)),
-              height: Math.min(1, Math.max(0, excludeBoxH)),
-            }
-          : undefined,
-    })
+    const { png, width, height } = await removeBackground(bytes, { bg })
 
     if (format === 'json') {
       return NextResponse.json({
@@ -262,9 +137,6 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (err) {
-    return errorResponse(
-      `处理失败: ${formatServerError(err)}`,
-      500
-    )
+    return errorResponse(`处理失败: ${formatServerError(err)}`, 500)
   }
 }
