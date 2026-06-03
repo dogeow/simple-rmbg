@@ -60,14 +60,18 @@ type ModelSpec = {
   }
 }
 
+export const MODEL_LOCAL_PATH = path.resolve(
+  process.env.MODEL_2_0_LOCAL_PATH ??
+    process.env.MODEL_LOCAL_PATH ??
+    path.join(process.cwd(), 'models', 'RMBG-2.0')
+)
+
+const ONNX_MODEL_PATH = path.join(MODEL_LOCAL_PATH, 'onnx', 'model.onnx')
+
 const MODEL_SPEC: ModelSpec = {
   id: 'briaai/RMBG-2.0',
   displayName: 'RMBG-2.0',
-  localPath: path.resolve(
-    process.env.MODEL_2_0_LOCAL_PATH ??
-      process.env.MODEL_LOCAL_PATH ??
-      path.join(process.cwd(), 'models', 'RMBG-2.0')
-  ),
+  localPath: MODEL_LOCAL_PATH,
   modelType: 'birefnet',
   processorConfig: {
     do_normalize: true,
@@ -98,10 +102,18 @@ async function loadModelFrom(source: string, localFilesOnly: boolean, spec: Mode
   return { model, processor, spec }
 }
 
+function assertLocalModelReady() {
+  if (!fs.existsSync(ONNX_MODEL_PATH)) {
+    throw new Error(
+      `本地模型不完整，缺少 ${ONNX_MODEL_PATH}。请在本机下载后上传到服务器，或配置 HF_TOKEN 从 Hugging Face 拉取。`
+    )
+  }
+}
+
 async function loadModelWithRetry(maxAttempts = 4) {
   const spec = MODEL_SPEC
-  const hasLocalModel = fs.existsSync(spec.localPath)
-  if (hasLocalModel) {
+  const hasOnnxModel = fs.existsSync(ONNX_MODEL_PATH)
+  if (hasOnnxModel) {
     try {
       return await loadModelFrom(spec.localPath, true, spec)
     } catch (err) {
@@ -110,7 +122,7 @@ async function loadModelWithRetry(maxAttempts = 4) {
       }
     }
   } else if (MODEL_LOCAL_ONLY) {
-    throw new Error(`已启用 MODEL_LOCAL_ONLY，但本地模型目录不存在: ${spec.localPath}`)
+    assertLocalModelReady()
   }
 
   let lastError: unknown = null
@@ -147,12 +159,20 @@ export function getModel() {
 
 export function getModelRuntimeInfo() {
   const spec = MODEL_SPEC
+  const hasHfToken = Boolean(process.env.HF_TOKEN?.trim())
   return {
     modelId: spec.id,
     localPath: spec.localPath,
     localPathExists: fs.existsSync(spec.localPath),
+    onnxModelExists: fs.existsSync(ONNX_MODEL_PATH),
     localOnly: MODEL_LOCAL_ONLY,
+    hasHfToken,
     remoteHosts,
     currentRemoteHost: env.remoteHost,
+    setupHint: fs.existsSync(ONNX_MODEL_PATH)
+      ? '本地模型已就绪'
+      : hasHfToken
+        ? '将使用 HF_TOKEN 从 Hugging Face 下载（需已在网页接受 briaai/RMBG-2.0 条款）'
+        : '请设置 HF_TOKEN，或将完整模型目录放到 localPath（含 onnx/model.onnx）并设置 MODEL_LOCAL_ONLY=true',
   }
 }
