@@ -1,0 +1,36 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - heading "去背景 · 物品抠图" [level=1] [ref=e4]
+      - paragraph [ref=e5]:
+        - text: 本地 RMBG-1.4 模型，专注物品/商品抠图，只保留主体。也提供
+        - code [ref=e6]: POST /api/remove-bg
+        - text: 接口。
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - figure "原图（当前模式：不要的框）" [ref=e45]:
+          - generic [ref=e26]: 原图（当前模式：不要的框）
+          - generic [ref=e27]:
+            - img "原图"
+        - figure "去背景结果" [ref=e28]:
+          - generic [ref=e29]: 去背景结果
+          - img "去背景结果" [ref=e31]
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - button "画要的框" [ref=e34]
+          - button "画不要的框" [active] [ref=e35]
+        - generic [ref=e36]:
+          - button "透明背景" [ref=e37]
+          - button "白色背景" [ref=e38]
+        - link "下载 PNG" [ref=e39] [cursor=pointer]:
+          - /url: blob:http://localhost:3001/e0dd51b7-e539-4238-8f17-084393d61d0a
+        - generic [ref=e40]:
+          - checkbox "只保留主物体" [checked] [ref=e41]
+          - text: 只保留主物体
+        - button "清空框选" [ref=e42]
+        - button "换一张" [ref=e43]
+      - paragraph [ref=e44]: 绿色框 = 指定保留哪个物体；红色框 = 画在包装盒/文字上即可，会删同色相连纸盒并擦掉框内黑字、金字的残影。车身银灰/贴纸会自动保留。
+    - generic [ref=e12]: 首次使用会下载模型（约几十 MB），之后可离线运行。
+  - button "Open Next.js Dev Tools" [ref=e18] [cursor=pointer]:
+    - img [ref=e19]
+  - alert [ref=e22]

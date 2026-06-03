@@ -1,0 +1,12 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - heading "去背景 · 物品抠图" [level=1] [ref=e4]
+    - paragraph [ref=e5]:
+      - text: 本地 RMBG-1.4 模型，专注物品/商品抠图，只保留主体。也提供
+      - code [ref=e6]: POST /api/remove-bg
+      - text: 接口。
+  - button "点击或拖拽图片到此处 支持 JPEG / PNG / WebP，最大 15MB" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+    - paragraph [ref=e10]: 点击或拖拽图片到此处
+    - paragraph [ref=e11]: 支持 JPEG / PNG / WebP，最大 15MB
+  - generic [ref=e12]: 首次使用会下载模型（约几十 MB），之后可离线运行。
