@@ -31,7 +31,7 @@ set('writable_mode', 'chmod');
 set('writable_recursive', true);
 set('writable_chmod_mode', '0775');
 set('verify_base_url', getenv('VERIFY_BASE_URL') ?: '');
-set('local_healthcheck_base_url', 'http://127.0.0.1:' . (getenv('PORT') ?: '3000'));
+set('local_healthcheck_base_url', 'http://127.0.0.1:' . (getenv('PORT') ?: '3001'));
 
 add('shared_dirs', ['logs', 'models', '.cache']);
 add('writable_dirs', ['logs']);
@@ -132,6 +132,40 @@ done
 BASH);
 
     run("mkdir -p $releasePath/logs");
+});
+
+desc('迁移并准备跨 release 共享的模型与缓存目录');
+task('deploy:prepare_shared_runtime', function () {
+    run(<<<'BASH'
+bash -lc '
+set -euo pipefail
+
+deploy_path="{{deploy_path}}"
+shared_dir="$deploy_path/shared"
+shared_models="$shared_dir/models"
+shared_cache="$shared_dir/.cache"
+legacy_models="$deploy_path/models"
+legacy_cache="$deploy_path/.cache"
+
+mkdir -p "$shared_models" "$shared_cache"
+
+if [ ! -f "$shared_models/RMBG-2.0/onnx/model.onnx" ] && [ -d "$legacy_models/RMBG-2.0" ]; then
+  echo "[deploy] 迁移 legacy models/ 到 shared/models/"
+  rsync -a "$legacy_models/" "$shared_models/"
+fi
+
+if [ -d "$legacy_cache" ] && [ ! -L "$legacy_cache" ]; then
+  echo "[deploy] 迁移 legacy .cache/ 到 shared/.cache/"
+  rsync -a "$legacy_cache/" "$shared_cache/"
+fi
+
+if [ ! -f "$shared_models/RMBG-2.0/onnx/model.onnx" ]; then
+  echo "[deploy] ERROR: 缺少模型 $shared_models/RMBG-2.0/onnx/model.onnx" >&2
+  echo "[deploy] 请上传 RMBG-2.0 到 shared/models/，或保留 legacy models/RMBG-2.0 让部署自动迁移。" >&2
+  exit 75
+fi
+'
+BASH);
 });
 
 desc('安装 Node.js 依赖');
@@ -263,6 +297,12 @@ pm2_untracked() {
   env -u RUNNER_TRACKING_ID pm2 "$@"
 }
 
+if systemctl is-active --quiet simple-rmbg.service 2>/dev/null; then
+  echo "[deploy] 停止 legacy systemd 服务 simple-rmbg.service，切换到 PM2 管理"
+  sudo -n systemctl stop simple-rmbg.service || true
+  sudo -n systemctl disable simple-rmbg.service || true
+fi
+
 if pm2_untracked info "$app_name" >/dev/null 2>&1; then
   echo "[deploy] 重启 PM2 应用: $app_name"
 
@@ -316,6 +356,7 @@ task('deploy', [
     'deploy:release',
     'deploy:update_code',
     'deploy:runtime_files',
+    'deploy:prepare_shared_runtime',
     'deploy:shared',
     'deploy:writable',
     'deploy:vendors',

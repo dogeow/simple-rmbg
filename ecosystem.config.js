@@ -3,13 +3,14 @@ module.exports = {
     {
       name: 'simple-rmbg-nextjs',
       script: 'npm',
-      args: 'run start',
+      args: 'run start -- --hostname 127.0.0.1',
       cwd: process.env.PM2_CWD || process.env.APP_ROOT,
       instances: 1,
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000,
+        PORT: process.env.PORT || 3001,
+        HOSTNAME: '127.0.0.1',
       },
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',
