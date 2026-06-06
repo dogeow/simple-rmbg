@@ -86,11 +86,6 @@ export default function Home() {
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-5 py-10 sm:py-16">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">去背景</h1>
-        <p className="text-sm text-neutral-400">
-          本地 RMBG-2.0 模型去背景。也提供{' '}
-          <code className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-200">POST /api/remove-bg</code>{' '}
-          接口。
-        </p>
       </header>
 
       {!originalUrl ? (
@@ -152,7 +147,6 @@ export default function Home() {
         </div>
       )}
 
-      <footer className="mt-auto pt-6 text-xs text-neutral-600">首次使用会下载 RMBG-2.0 模型，之后可离线运行。</footer>
-    </main>
+      </main>
   )
 }
